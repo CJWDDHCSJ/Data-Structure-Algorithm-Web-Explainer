@@ -1,5 +1,7 @@
 const fs=require('node:fs');
 const assert=require('node:assert/strict');
+const path=require('node:path');
+const {pathToFileURL}=require('node:url');
 async function run(){
  const tab=await fetch('http://127.0.0.1:9222/json/new?http://127.0.0.1:4173',{method:'PUT'}).then(r=>r.json());
  const ws=new WebSocket(tab.webSocketDebuggerUrl);await new Promise(r=>ws.addEventListener('open',r));let seq=0;const pending=new Map(),errors=[];
@@ -41,7 +43,7 @@ async function run(){
  await view('#lesson/modular');assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'),true);
  await view('#problems');assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'),true);
  await evaluate('state={completed:[],saved:[],solved:[],last:"base"};persist()');
- await send('Page.navigate',{url:'file:///C:/Mick%C2%B7Jie%C2%B7Liu/DAS/index.html'});await new Promise(r=>setTimeout(r,400));assert.equal(await evaluate('document.querySelectorAll(".chapter-card").length'),8);
+ await send('Page.navigate',{url:pathToFileURL(path.join(__dirname,'index.html')).href});await new Promise(r=>setTimeout(r,400));assert.equal(await evaluate('document.querySelectorAll(".chapter-card").length'),8);
  assert.deepEqual(errors,[]);
  console.log('PASS: 8 lessons, 24 problems, search, filters, bookmarks, solved status, completion, quiz, 6 interactive demos, invalid/edge inputs, 390px responsive layouts, offline file opening, no runtime errors.');
  await send('Page.close');ws.close();

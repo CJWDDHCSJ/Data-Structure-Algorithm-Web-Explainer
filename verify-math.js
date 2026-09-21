@@ -35,6 +35,9 @@ int main() {
   }
   for(int n=1;n<=1000;++n) {long long expected=0;for(int i=1;i<=n;++i)expected+=n/i;assert(divisorCountSum(n)==expected);}
   assert(powerSum(9902,12346,9901).second==12346%9901);
+  assert(modpow(LLONG_MAX-1,1,LLONG_MAX)==LLONG_MAX-1);
+  assert(modpow(-1,3,LLONG_MAX)==LLONG_MAX-1);
+  assert(powerSum(LLONG_MAX-1,3,LLONG_MAX).second==1);
   cout<<"PASS: displayed C++17 templates compile; base conversion, GCD/LCM, factorization, fast powers, geometric sums and quotient grouping match independent small-case calculations.\\n";
 }`;
 fs.mkdirSync('.verification',{recursive:true});

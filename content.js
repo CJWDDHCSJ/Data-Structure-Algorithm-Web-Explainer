@@ -16,6 +16,7 @@ long long parse(const string& s, int from) {
     return x;
 }
 string encode(long long x, int base) {
+    // 正基数 2..36 要求 x>=0；负基数 -36..-2 允许正负 x
     const string digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     if (x == 0) return "0";
     string s;
@@ -114,7 +115,8 @@ for (bool b : bad) answer += !b;`)}<p>记 D=R−L+1，常用埃氏筛预处理�
  {id:'modular',title:'同余与快速幂',short:'在取模世界中安全地做乘法与求和',icon:'≡',color:'#9790b3',tint:'#f2f0f8',time:30,level:'进阶',tags:['模运算','快速幂','等比数列'],problems:['P1593','P1866','P2822'],sections:['同余运算与除法陷阱','二进制拆分的快速幂','同时计算幂与等比和','数值类型与模板边界'],intro:'模运算让巨大答案保持在有限范围内，快速幂让指数级数值只需对数次操作。两者结合，是计数和因子和问题的常用工具。',body:()=>`
  <h2 id="s0">01 / 同余运算与除法陷阱</h2><p>若 m∣(a−b)，就称 a、b 模 m 同余，记作 a≡b (mod m)。加、减、乘可以在每一步取模；除法需要额外条件。比如整数 6/2=3，但先模 5 再整数除法会变成 1/2=0，显然不对。</p>${formula('(a+b) mod m = ((a mod m)+(b mod m)) mod m<br>(ab) mod m = ((a mod m)(b mod m)) mod m')}<p>只有 gcd(b,m)=1 时，b 才有模 m 逆元。若 m 为素数且 b 不是 m 的倍数，可以用 b<sup>m−2</sup> 求逆元；本题单的 P2822 模数不一定为素数，P1593 的分母也可能不可逆，所以要选择不依赖除法的方法。</p>
  <h2 id="s1">02 / 二进制拆分的快速幂</h2><p>把指数写成二进制。例如 13=8+4+1，a¹³=a⁸a⁴a。不断将底数平方，每一轮看指数最低位是否为 1，是则乘入答案，然后将指数右移。循环不变量是：已累计答案 × 当前底数<sup>剩余指数</sup> 与原目标同余。</p>${codeBlock(`long long modpow(long long a, long long e, long long mod) {
-    a = (a % mod + mod) % mod;
+    a %= mod;
+    if (a < 0) a += mod; // 避免正余数再加 mod 时溢出
     long long ans = 1 % mod;
     while (e > 0) {
         if (e & 1) ans = (__int128)ans * a % mod;
@@ -126,13 +128,14 @@ for (bool b : bad) answer += !b;`)}<p>记 D=R−L+1，常用埃氏筛预处理�
  <h2 id="s2">03 / 同时计算幂与等比和</h2><p>定义 P(n)=pⁿ，S(n)=1+p+…+pⁿ⁻¹，注意 n 表示<strong>项数</strong>。递归返回二元组 (P(n),S(n))。把 2k 项分成两半，后一半恰好是前一半乘 pᵏ。</p>${formula('P(2k)=P(k)²，S(2k)=S(k)·(1+P(k))<br>P(2k+1)=P(2k)·p，S(2k+1)=S(2k)+P(2k)','空和 S(0)=0，P(0)=1；所有操作都对 m 取模。')}${codeBlock(`// 返回 {p^n, 1+p+...+p^(n-1)} mod m
 pair<long long, long long> powerSum(long long p, long long n,
                                     long long m) {
+    // p>=0、n>=0、m>0；n 是项数，不是最高次数
     if (n == 0) return {1 % m, 0};
     p %= m;
     auto [q, s] = powerSum(p, n / 2, m);
     long long q2 = (__int128)q * q % m;
     long long s2 = (__int128)s * (1 + q) % m;
     if (n % 2 == 0) return {q2, s2};
-    return {(__int128)q2 * p % m, (s2 + q2) % m};
+    return {(__int128)q2 * p % m, ((__int128)s2 + q2) % m};
 }
 // P1593：a 的每个质因子 p，其原指数为 e
 // ans = ans * powerSum(p, 1LL*e*b + 1, 9901).second % 9901;`)}<p>每层只递归一次，再用常数次乘法合并，所以时间 O(log n)、递归空间 O(log n)。与“快速幂加递归求和”相比，这个版本避免重复计算幂，且在 p≡1 (mod 9901) 时仍然正确。</p>
