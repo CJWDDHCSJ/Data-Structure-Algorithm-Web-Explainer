@@ -12,7 +12,7 @@ async function run(){
  await send('Runtime.enable');await send('Page.enable');await send('Emulation.setDeviceMetricsOverride',{width:1440,height:1100,deviceScaleFactor:1,mobile:false});await send('Page.navigate',{url:'http://127.0.0.1:4173'});await new Promise(r=>setTimeout(r,700));
  await evaluate('state={completed:[],saved:[],solved:[],last:"base"};persist();route()');
  assert.equal(await evaluate('document.querySelectorAll(".chapter-card").length'),8);
- assert.equal(await evaluate('problems.length'),24);
+ assert.equal(await evaluate('problems.length'),42);
  assert.equal(await evaluate('chapters.every(c=>c.body().length>1000)'),true);
  fs.writeFileSync('preview-desktop.png',Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false})).data,'base64'));
  await view('#problems');assert.equal(await evaluate('document.querySelectorAll("#problem-table tbody tr").length'),24);
@@ -42,10 +42,51 @@ async function run(){
  await view('#lab');assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'),true);
  await view('#lesson/modular');assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'),true);
  await view('#problems');assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'),true);
+ // Both modules share records, while chapter lists and filters remain scoped.
+ await view('#module/range');
+ assert.equal(await evaluate('document.querySelectorAll(".chapter-card").length'),6);
+ assert.equal(await evaluate('document.querySelectorAll("#chapter-nav a").length'),6);
+ assert.equal(await evaluate('document.querySelector("#nav-problem-count").textContent'),'18');
+ assert.equal(await evaluate('state.module'),'range');
+ assert.equal(await evaluate('state.completed.includes("gcd")'),true);
+ assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'),true);
+ await evaluate('document.querySelector("#toast").classList.remove("show")');
+ await evaluate('new Promise(r=>setTimeout(r,250))');
+ fs.writeFileSync('preview-range-mobile.png',Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false})).data,'base64'));
+ await send('Emulation.setDeviceMetricsOverride',{width:1440,height:1100,deviceScaleFactor:1,mobile:false});
+ fs.writeFileSync('preview-range-desktop.png',Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false})).data,'base64'));
+ await view('#problems');assert.equal(await evaluate('document.querySelectorAll("#problem-table tbody tr").length'),18);
+ await evaluate('document.querySelector("[data-filter=range-diff]").click()');assert.equal(await evaluate('document.querySelectorAll("#problem-table tbody tr").length'),5);
+ await evaluate('document.querySelector("[data-problem=P2367]").click();document.querySelector("#problem-dialog [data-save]").click();document.querySelector("#problem-dialog [data-toggle-solved]").click();document.querySelector("#problem-dialog").close()');
+ await view('#lab');assert.equal(await evaluate('document.querySelectorAll(".lab-card").length'),2);
+ assert.match(await evaluate('document.querySelector("#prefix-output").textContent'),/修改后区间和 = 15/);
+ assert.match(await evaluate('document.querySelector("#compression-output").textContent'),/原坐标跨度 = 999999993/);
+ await evaluate('document.querySelector("#prefix-left").value="4";prefixCalc()');assert.match(await evaluate('document.querySelector("#prefix-output").textContent'),/不能大于/);
+ await evaluate('document.querySelector("#prefix-values").value="-2";document.querySelector("#prefix-left").value="1";document.querySelector("#prefix-right").value="1";document.querySelector("#prefix-delta").value="-3";prefixCalc()');assert.match(await evaluate('document.querySelector("#prefix-output").textContent'),/修改后区间和 = -5/);
+ await evaluate('document.querySelector("#compression-values").value="7 7 7";compressionCalc()');assert.match(await evaluate('document.querySelector("#compression-output").textContent'),/原坐标跨度 = 0/);
+ await evaluate('document.querySelector("#compression-values").value="<script>";compressionCalc()');assert.match(await evaluate('document.querySelector("#compression-output").textContent'),/请输入/);
+ for(const id of ['range-prefix','range-grid','range-diff','range-compress','range-binary','range-relations']){await view('#lesson/'+id);assert.equal(await evaluate('document.querySelectorAll(".quiz-option").length'),3);assert.equal(await evaluate('document.querySelectorAll("#main .article h2").length'),4);}
+ await evaluate('document.querySelectorAll(".quiz-option")[1].click()');assert.match(await evaluate('document.querySelector(".quiz-feedback").textContent'),/答对了/);
+ await evaluate('document.querySelector("[data-complete]").click()');
+ await view('#notebook');assert.match(await evaluate('document.querySelector("#main").textContent'),/P3383/);assert.match(await evaluate('document.querySelector("#main").textContent'),/P2367/);
+ await view('#module/math');
+ await evaluate('openSearch();document.querySelector("#search-input").value="P5937";search("P5937");document.querySelector(".search-result").click()');
+ await evaluate('new Promise(r=>setTimeout(r,100))');assert.equal(await evaluate('state.module'),'range');assert.equal(await evaluate('document.querySelector("#problem-dialog").open'),true);
+ await evaluate('document.querySelector("#problem-dialog").close()');
+ await send('Page.reload');await new Promise(r=>setTimeout(r,500));assert.equal(await evaluate('state.saved.includes("P2367") && state.saved.includes("P3383")'),true);
+ assert.equal(await evaluate('state.completed.includes("gcd") && state.completed.includes("range-relations")'),true);
+ await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+ for(const hash of ['#module/range','#lab','#lesson/range-grid','#lesson/range-relations','#problems']){await view(hash);assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'),true);}
+ // An existing v1 record without module metadata must still load.
+ await evaluate('localStorage.setItem(storageKey,JSON.stringify({completed:["gcd"],saved:["P3383"],solved:["P3383"],last:"gcd"}))');
+ await send('Page.navigate',{url:'http://127.0.0.1:4173'});await new Promise(r=>setTimeout(r,500));
+ assert.equal(await evaluate('state.module'),'math');assert.equal(await evaluate('state.completed.includes("gcd")'),true);
  await evaluate('state={completed:[],saved:[],solved:[],last:"base"};persist()');
- await send('Page.navigate',{url:pathToFileURL(path.join(__dirname,'index.html')).href});await new Promise(r=>setTimeout(r,400));assert.equal(await evaluate('document.querySelectorAll(".chapter-card").length'),8);
+ await send('Page.navigate',{url:pathToFileURL(path.join(__dirname,'index.html')).href+'#module/math'});await new Promise(r=>setTimeout(r,400));assert.equal(await evaluate('document.querySelectorAll(".chapter-card").length'),8);
+ await view('#module/range');assert.equal(await evaluate('document.querySelectorAll(".chapter-card").length'),6);
+ await view('#problem/P5937');assert.equal(await evaluate('document.querySelector("#problem-dialog").open'),true);
  assert.deepEqual(errors,[]);
- console.log('PASS: 8 lessons, 24 problems, search, filters, bookmarks, solved status, completion, quiz, 6 interactive demos, invalid/edge inputs, 390px responsive layouts, offline file opening, no runtime errors.');
+ console.log('PASS: 2 modules, 14 lessons, 42 problems, 8 labs, cross-module search, scoped filters, shared and legacy records, quizzes, edge inputs, 390px layouts, offline opening, no runtime errors.');
  await send('Page.close');ws.close();
 }
 run().catch(e=>{console.error(e);process.exit(1);});
